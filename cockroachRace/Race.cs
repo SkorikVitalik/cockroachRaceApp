@@ -1,33 +1,49 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace cockroachRace
+﻿namespace cockroachRace
 {
-    public class Race
+    public static class Race
     {
-        private static Tarcoon[] tarcoons;
-        private static int MaxSiz; 
-        private Race() 
-        { 
-        
-        }
-        
-        public static void CreateTarcoons(int quantityOfTarcoonns, int maxSpeed, int minSpeed)
+        private static Cockroach[] tarcoons = new Cockroach[0];
+        public static bool IsFinished { get; private set; }
+        public static int WinnerId { get; private set; }
+
+        public static void SetTarcoons(int quantityOfTarcoonns, int minSpeed, int maxSpeed)
         {
-            tarcoons = new Tarcoon[quantityOfTarcoonns];
+            tarcoons = new Cockroach[quantityOfTarcoonns];
             for (int i = 0; i < quantityOfTarcoonns; i++)
             {
                 Random random = new Random();
-                tarcoons[0] = new Tarcoon(random.Next(minSpeed, maxSpeed));
+                tarcoons[i] = new Cockroach(random.Next(minSpeed, maxSpeed), i);
             }
         }
-        public static void CreateField(int ciels)
+        public static void Start(int sizeField, int StartPositionX)
         {
-            for (int i = 0; i < tarcoons.Length; i++)
+            Thread[] roads = new Thread[tarcoons.Length];
+            for (int i = 0; i < roads.Length; i++)
             {
+                int k = i;
+                roads[i] = new Thread(() =>
+                    {
+                        tarcoons[k].Run(sizeField, k, StartPositionX);
+                        lock(Cockroach.locker) 
+                        {
+                            if (tarcoons[k].IsPassed)
+                            {
+                                for (int j = 0; j < tarcoons.Length; j++)
+                                {
+                                    tarcoons[j].Stop();
+                                }
+                                IsFinished = true;
+                                WinnerId = tarcoons[k].TarcoonId;
+                                Console.SetCursorPosition(StartPositionX, tarcoons.Length + 1);
+                                Console.WriteLine($"{WinnerId} победил");
+                            }
+                        }
+                    }
+                );
+            }
+            for (int i = 0; i < roads.Length; i++)
+            {
+                roads[i].Start();
             }
         }
     }
